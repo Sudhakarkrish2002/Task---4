@@ -1,0 +1,25 @@
+{
+  "name": "robot-studio-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "main": "electron/main.js",
+  "workspaces": [
+    "react"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix react\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "start": "cross-env NODE_ENV=production electron .",
+    "build": "npm run build --prefix react",
+    "preview": "npm run preview --prefix react",
+    "lint": "npm run lint --prefix react"
+  },
+  "dependencies": {
+    "lottie-react": "^2.4.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^32.1.2",
+    "wait-on": "^7.2.0"
+  }
+}
