@@ -8,7 +8,10 @@ import ModulesSection from './components/sections/ModulesSection';
 import InfoSection from './components/sections/InfoSection';
 import ProjectDetailSection from './components/sections/ProjectDetailSection';
 import InstallLibrarySection from './components/sections/InstallLibrarySection';
-import UtilitiesModal from './components/modals/UtilitiesModal';
+import SupportDeskSection from './components/sections/SupportDeskSection';
+import ControlRobotSection from './components/sections/ControlRobotSection';
+import InstallLibraryModal from './components/modals/InstallLibraryModal';
+import GenerateTokenModal from './components/modals/GenerateTokenModal';
 import Toast from './components/ui/Toast';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { usePlatform } from './hooks/usePlatform';
@@ -21,7 +24,18 @@ const sidebarItems = [
   'Control-Based Robot',
   'Tutorials',
   'Share Your Feedback',
-  'Install Library',
+  'Support Desk',
+];
+
+// Navigation order for previous/next functionality
+const navigationOrder = [
+  ROUTES.HOME,
+  ROUTES.CODE_LAB,
+  ROUTES.MODULES,
+  ROUTES.CONTROL_ROBOT,
+  ROUTES.TUTORIALS,
+  ROUTES.FEEDBACK,
+  ROUTES.SUPPORT_DESK,
 ];
 
 const topNavCopy = {
@@ -157,7 +171,8 @@ function App() {
     connection: 'Connected',
     lastChecked: new Date(),
   });
-  const [isUtilityModalOpen, setIsUtilityModalOpen] = useState(false);
+  const [isInstallLibraryModalOpen, setIsInstallLibraryModalOpen] = useState(false);
+  const [isGenerateTokenModalOpen, setIsGenerateTokenModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [networkName, setNetworkName] = useState('');
   const [networkPassword, setNetworkPassword] = useState('');
@@ -190,6 +205,9 @@ function App() {
   const [codeLabConsole, setCodeLabConsole] = useState(['Ready to execute code.']);
   const [codeLabStatus, setCodeLabStatus] = useState('Idle');
   const [codeLabFiles, setCodeLabFiles] = useState([{ name: 'code.py', content: defaultCodeLabCode, active: true }]);
+  const [hasStartedCoding, setHasStartedCoding] = useState(false);
+  const [isCodeLabFullScreen, setIsCodeLabFullScreen] = useState(false);
+  const [hasStartedControlRobot, setHasStartedControlRobot] = useState(false);
   
   const previousNonEditorViewRef = useRef(ROUTES.WELCOME);
   const { modifierKey, platform } = usePlatform();
@@ -232,8 +250,48 @@ function App() {
 
   const openCodeLab = () => {
     setView(ROUTES.CODE_LAB);
+    setHasStartedCoding(false);
     setToast({ message: 'Code Lab opened', type: 'success' });
   };
+
+  const handleEnterFullScreen = () => {
+    setIsCodeLabFullScreen(true);
+    setHasStartedCoding(true);
+  };
+
+  const handleExitFullScreen = () => {
+    setIsCodeLabFullScreen(false);
+  };
+
+  const handleStartControlRobot = () => {
+    setHasStartedControlRobot(true);
+  };
+
+  // Navigation helpers
+  const getCurrentNavigationIndex = () => {
+    return navigationOrder.indexOf(view);
+  };
+
+  const handleNavigatePrevious = () => {
+    const currentIndex = getCurrentNavigationIndex();
+    if (currentIndex > 0) {
+      const previousView = navigationOrder[currentIndex - 1];
+      handleViewChange(previousView);
+    }
+  };
+
+  const handleNavigateNext = () => {
+    const currentIndex = getCurrentNavigationIndex();
+    if (currentIndex < navigationOrder.length - 1) {
+      const nextView = navigationOrder[currentIndex + 1];
+      handleViewChange(nextView);
+    }
+  };
+
+  // Compute navigation state based on current view
+  const currentNavIndex = navigationOrder.indexOf(view);
+  const canNavigatePrevious = currentNavIndex > 0;
+  const canNavigateNext = currentNavIndex < navigationOrder.length - 1 && currentNavIndex !== -1;
 
   const handleCreateNewFile = () => {
     // Save current file content before creating new
@@ -343,6 +401,16 @@ function App() {
     }
   }, [view]);
 
+  const openInstallLibraryModal = () => {
+    setIsGenerateTokenModalOpen(false);
+    setIsInstallLibraryModalOpen(true);
+  };
+
+  const openGenerateTokenModal = () => {
+    setIsInstallLibraryModalOpen(false);
+    setIsGenerateTokenModalOpen(true);
+  };
+
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -372,8 +440,11 @@ function App() {
       }
     },
     'Escape': () => {
-      if (isUtilityModalOpen) {
-        setIsUtilityModalOpen(false);
+      if (isInstallLibraryModalOpen) {
+        setIsInstallLibraryModalOpen(false);
+      }
+      if (isGenerateTokenModalOpen) {
+        setIsGenerateTokenModalOpen(false);
       }
       if (isSidebarOpen) {
         setIsSidebarOpen(false);
@@ -388,6 +459,15 @@ function App() {
     // When switching to Home, maintain current tab or default to Explore
     if (nextView === ROUTES.HOME && !topTab) {
       setTopTab('Explore');
+    }
+    // Reset Code Lab intro when navigating to Code Lab
+    if (nextView === ROUTES.CODE_LAB) {
+      setHasStartedCoding(false);
+      setIsCodeLabFullScreen(false);
+    }
+    // Reset Control Robot intro when navigating to Control Robot
+    if (nextView === ROUTES.CONTROL_ROBOT) {
+      setHasStartedControlRobot(false);
     }
   };
 
@@ -411,7 +491,8 @@ function App() {
             onCodeChange={setCodeLabCode}
             onRun={handleCodeLabRun}
             onOpenEditor={openCodeLab}
-            onOpenUtilities={() => setIsUtilityModalOpen(true)}
+            onOpenInstallLibrary={openInstallLibraryModal}
+            onOpenGenerateToken={openGenerateTokenModal}
             onCreateNewFile={handleCreateNewFile}
             consoleLines={codeLabConsole}
             status={codeLabStatus}
@@ -439,6 +520,10 @@ function App() {
             }}
             onDeleteFile={handleCodeLabDeleteFile}
             onRenameFile={handleCodeLabRenameFile}
+            hasStartedCoding={hasStartedCoding}
+            isFullScreen={isCodeLabFullScreen}
+            onEnterFullScreen={handleEnterFullScreen}
+            onExitFullScreen={handleExitFullScreen}
           />
         );
       case ROUTES.MODULES:
@@ -453,11 +538,10 @@ function App() {
         );
       case ROUTES.CONTROL_ROBOT:
         return (
-          <InfoSection
+          <ControlRobotSection
             icon={pageIcon}
-            title='Control-Based Robot'
-            eyebrow='Control Strategies'
-            description='Configure PID loops, state machines, and safety interlocks tailored to your robotic platform. Use this space to document control schemes before deploying them in the lab.'
+            hasStarted={hasStartedControlRobot}
+            onStart={handleStartControlRobot}
           />
         );
       case ROUTES.TUTORIALS:
@@ -589,27 +673,8 @@ function App() {
         return (
           <ProjectDetailSection icon={pageIcon} project={selectedProject} onStartCoding={openCodeLab} />
         );
-      case ROUTES.INSTALL_LIBRARY:
-        return (
-          <InstallLibrarySection
-            icon={pageIcon}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            filteredLibraries={filteredLibraries}
-            libraryStatus={libraryStatus}
-            onInstallLibrary={handleInstallLibrary}
-            isInstalling={isInstalling}
-            currentInstall={currentInstall}
-            internetStatus={internetStatus}
-            customLibrary={customLibrary}
-            onCustomLibraryChange={setCustomLibrary}
-            onInstallCustomLibrary={handleInstallCustomLibrary}
-            consoleLogs={consoleLogs}
-            installMessage={installMessage}
-            onOpenUtilities={() => setIsUtilityModalOpen(true)}
-            onClearConsole={handleClearInstallConsole}
-          />
-        );
+      case ROUTES.SUPPORT_DESK:
+        return <SupportDeskSection icon={pageIcon} />;
       default:
         return null;
     }
@@ -752,16 +817,11 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (view !== 'Install Library') {
-      setIsUtilityModalOpen(false);
+    if (view !== ROUTES.CODE_LAB) {
+      setIsInstallLibraryModalOpen(false);
+      setIsGenerateTokenModalOpen(false);
     }
   }, [view]);
-
-  useEffect(() => {
-    if (isUtilityModalOpen) {
-      setIsTokenCopied(false);
-    }
-  }, [isUtilityModalOpen]);
 
   useEffect(() => {
     setLibraryStatus((prev) => {
@@ -787,22 +847,35 @@ function App() {
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 ${platformClass}`}>
-      <TopNav activeTab={topTab} onSelect={handleTopNavTabChange} onMenuToggle={() => setIsSidebarOpen((prev) => !prev)} />
-      <div className="mx-auto flex w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
-          <Sidebar
-            items={sidebarItems}
-            activeItem={view}
-            onSelect={handleViewChange}
-            className="sticky top-24"
-            heading="Workspace"
-                />
-              </div>
+      {!isCodeLabFullScreen && (
+        <TopNav 
+          activeTab={topTab} 
+          onSelect={handleTopNavTabChange} 
+          onMenuToggle={() => setIsSidebarOpen((prev) => !prev)}
+          currentView={view}
+          onNavigatePrevious={handleNavigatePrevious}
+          onNavigateNext={handleNavigateNext}
+          canNavigatePrevious={canNavigatePrevious}
+          canNavigateNext={canNavigateNext}
+        />
+      )}
+      <div className={`mx-auto flex w-full ${isCodeLabFullScreen ? 'gap-0 px-0' : 'max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-10 lg:px-8'}`}>
+        {!isCodeLabFullScreen && (
+          <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
+            <Sidebar
+              items={sidebarItems}
+              activeItem={view}
+              onSelect={handleViewChange}
+              className="sticky top-24"
+              heading="Workspace"
+            />
+          </div>
+        )}
 
-        <main className="flex-1 min-w-0 space-y-8" key={`${view}-${topTab}`}>
+        <main className={`${isCodeLabFullScreen ? 'w-full' : 'flex-1 min-w-0'} space-y-8`} key={`${view}-${topTab}`}>
           {renderSection()}
         </main>
-                  </div>
+      </div>
 
       {isSidebarOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
@@ -833,14 +906,29 @@ function App() {
                   )}
 
 
-      {isUtilityModalOpen && (
-        <UtilitiesModal
+      {isInstallLibraryModalOpen && (
+        <InstallLibraryModal
           requiredLibraries={requiredLibraries}
           libraryStatus={libraryStatus}
           onInstallLibrary={handleInstallLibrary}
           isInstalling={isInstalling}
           currentInstall={currentInstall}
           installMessage={installMessage}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          filteredLibraries={filteredLibraries}
+          customLibrary={customLibrary}
+          onCustomLibraryChange={setCustomLibrary}
+          onInstallCustomLibrary={handleInstallCustomLibrary}
+          consoleLogs={consoleLogs}
+          internetStatus={internetStatus}
+          onClearConsole={handleClearInstallConsole}
+          onClose={() => setIsInstallLibraryModalOpen(false)}
+        />
+      )}
+
+      {isGenerateTokenModalOpen && (
+        <GenerateTokenModal
           networkName={networkName}
           onNetworkNameChange={setNetworkName}
           networkPassword={networkPassword}
@@ -849,7 +937,7 @@ function App() {
           generatedToken={generatedToken}
           onCopyToken={handleCopyToken}
           isTokenCopied={isTokenCopied}
-          onClose={() => setIsUtilityModalOpen(false)}
+          onClose={() => setIsGenerateTokenModalOpen(false)}
         />
       )}
 

@@ -6,7 +6,7 @@ export const ROUTES = {
   CONTROL_ROBOT: 'Control-Based Robot',
   TUTORIALS: 'Tutorials',
   FEEDBACK: 'Share Your Feedback',
-  INSTALL_LIBRARY: 'Install Library',
+  SUPPORT_DESK: 'Support Desk',
   PROJECT_DETAIL: 'Project Detail',
 };
 

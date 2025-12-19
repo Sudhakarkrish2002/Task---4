@@ -49,7 +49,8 @@ function CodeLabSection({
   onCodeChange,
   onRun,
   onOpenEditor,
-  onOpenUtilities,
+  onOpenInstallLibrary,
+  onOpenGenerateToken,
   onCreateNewFile,
   consoleLines = [],
   status = 'Idle',
@@ -58,6 +59,10 @@ function CodeLabSection({
   onFileChange,
   onDeleteFile,
   onRenameFile,
+  hasStartedCoding = false,
+  isFullScreen = false,
+  onEnterFullScreen,
+  onExitFullScreen,
 }) {
   const { modifierKey } = usePlatform();
   const isRunning = status === 'Running';
@@ -74,8 +79,10 @@ function CodeLabSection({
         }
         break;
       case 'Install Library':
+        if (onOpenInstallLibrary) onOpenInstallLibrary();
+        break;
       case 'Generate Token':
-        if (onOpenUtilities) onOpenUtilities();
+        if (onOpenGenerateToken) onOpenGenerateToken();
         break;
       case 'File':
         if (onCreateNewFile) onCreateNewFile();
@@ -88,11 +95,190 @@ function CodeLabSection({
     }
   };
 
-  return (
-    <section className={SECTION_STACK}>
-      <SectionHeader icon={icon} title="Code Lab" eyebrow="Programming Interface" />
+  // Show intro view if user hasn't started coding yet
+  if (!hasStartedCoding) {
+    return (
+      <section className={SECTION_STACK}>
+        <SectionHeader icon={icon} title="Code Lab" eyebrow="Programming Interface" />
+        
+        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-8">
+          <div className="max-w-3xl">
+            <h3 className="text-2xl font-semibold text-white mb-4">Welcome to Code Lab</h3>
+            <p className="text-base text-slate-300 mb-6 leading-relaxed">
+              Code Lab is your integrated programming environment for robotics development. Write Python code, 
+              execute simulations, and interact with sensors and controllers—all within Robot Studio's offline-first workspace.
+            </p>
 
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-200">
+            <div className="mb-8">
+              <h4 className="text-lg font-semibold text-white mb-4">Code Lab Environment Details</h4>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                    </div>
+                    <h5 className="text-sm font-semibold text-white">Python Version</h5>
+                  </div>
+                  <p className="text-sm text-emerald-300 font-medium">3.11+</p>
+                  <p className="text-xs text-slate-400 mt-2">Note: Python 3.11+ is NOT currently installed or integrated in the backend runtime. This is a design specification for future implementation.</p>
+                </div>
+
+                <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M6 20h12a2 2 0 0 0 2-2v-4" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M18 8 12 14 6 8" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M12 4v10" />
+                      </svg>
+                    </div>
+                    <h5 className="text-sm font-semibold text-white">Supported Libraries</h5>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {['numpy', 'opencv', 'scipy', 'matplotlib', 'pandas', 'pyserial'].map((lib) => (
+                      <span key={lib} className="rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300 border border-emerald-500/20">
+                        {lib}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-3">Pre-installed and ready to use</p>
+                </div>
+
+                <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-5 sm:col-span-2">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-300">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    </div>
+                    <h5 className="text-sm font-semibold text-white">Hardware Support</h5>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3 mt-4">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" strokeWidth="1.6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                      </svg>
+                      <span className="text-sm text-slate-300">Sensors</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.6" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M9 9h6M9 15h6" />
+                      </svg>
+                      <span className="text-sm text-slate-300">Controllers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.6" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-sm text-slate-300">Simulation API</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-3">Full integration with robotics hardware and simulation environments</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h4 className="text-lg font-semibold text-white mb-4">How to Use Code Lab</h4>
+              <div className="space-y-4">
+                <div className="flex gap-4 rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-sm flex-shrink-0">
+                    1
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="text-sm font-semibold text-white mb-1">Install Required Libraries</h5>
+                    <p className="text-sm text-slate-300">
+                      Use the Install Library option from the Code Lab top menu to add necessary packages before writing code.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-sm flex-shrink-0">
+                    2
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="text-sm font-semibold text-white mb-1">Generate Access Token</h5>
+                    <p className="text-sm text-slate-300">
+                      Generate a token using the Generate Token option to securely enable execution and hardware access.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-sm flex-shrink-0">
+                    3
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="text-sm font-semibold text-white mb-1">Start Writing Code</h5>
+                    <p className="text-sm text-slate-300">
+                      Once libraries are installed and token is generated, you can begin coding and running programs.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-sm flex-shrink-0">
+                    4
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="text-sm font-semibold text-white mb-1">Execute & View Output</h5>
+                    <p className="text-sm text-slate-300">
+                      Use the Run option to execute the code and view logs/output in the Output Console.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (onEnterFullScreen) {
+                  onEnterFullScreen();
+                }
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-8 py-3 text-sm font-semibold uppercase tracking-wide text-emerald-950 shadow-lg shadow-emerald-800/40 transition hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Enter Coding Mode
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className={isFullScreen ? 'h-screen flex flex-col' : SECTION_STACK}>
+      {!isFullScreen && <SectionHeader icon={icon} title="Code Lab" eyebrow="Programming Interface" />}
+      {isFullScreen && (
+        <div className="flex items-center justify-between mb-4 px-2">
+          <h2 className="text-xl font-semibold text-white">Code Lab - Full Screen Mode</h2>
+          <button
+            type="button"
+            onClick={() => {
+              if (onExitFullScreen) {
+                onExitFullScreen();
+              }
+            }}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/60 bg-slate-800/80 text-slate-400 transition hover:border-slate-500/80 hover:bg-slate-700/80 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+            aria-label="Exit full screen"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      <div className={`flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/80 px-6 py-4 text-sm font-semibold uppercase tracking-wide text-slate-200 ${isFullScreen ? 'mb-4' : ''}`}>
         {toolbarItems.map((item, index) => {
           const isActionable = ['Run', 'File', 'Install Library', 'Generate Token'].includes(item);
           const tooltipMap = {
@@ -122,8 +308,8 @@ function CodeLabSection({
         })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 flex flex-col">
+      <div className={`grid gap-6 ${isFullScreen ? 'grid-cols-[1.1fr_0.9fr] flex-1' : 'lg:grid-cols-[1.1fr_0.9fr]'}`}>
+        <article className={`rounded-2xl border border-slate-800 bg-slate-900/70 p-6 flex flex-col ${isFullScreen ? 'h-full' : ''}`}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               {files.length > 0 && (
@@ -243,7 +429,7 @@ function CodeLabSection({
               </Tooltip>
             </div>
           </div>
-          <div className="flex-1 rounded-xl border border-slate-800/80 bg-[#1e1f26] overflow-hidden min-h-[400px]">
+          <div className={`flex-1 rounded-xl border border-slate-800/80 bg-[#1e1f26] overflow-hidden ${isFullScreen ? 'min-h-[calc(100vh-200px)]' : 'min-h-[400px]'}`}>
             <Editor
               height="100%"
               defaultLanguage="python"
@@ -283,7 +469,7 @@ function CodeLabSection({
               )}
             </div>
           </div>
-          <div className="flex-1 min-h-[400px] overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/80 p-4 font-mono">
+          <div className={`flex-1 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/80 p-4 font-mono ${isFullScreen ? 'min-h-[calc(100vh-200px)]' : 'min-h-[400px]'}`}>
             {consoleLines.length ? (
               <pre className="whitespace-pre-wrap text-xs text-slate-300 leading-relaxed">
                 {consoleLines.join('\n')}

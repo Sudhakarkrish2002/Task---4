@@ -16,7 +16,7 @@ function InstallLibrarySection({
   onInstallCustomLibrary,
   consoleLogs,
   installMessage,
-  onOpenUtilities,
+  onOpenGenerateToken,
   onClearConsole,
 }) {
   const hasConsoleLogs = consoleLogs.length > 0;
@@ -35,7 +35,7 @@ function InstallLibrarySection({
         actions={
           <button
             type="button"
-            onClick={onOpenUtilities}
+            onClick={onOpenGenerateToken}
             className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-emerald-200 transition hover:bg-emerald-500/10"
           >
             Generate Token

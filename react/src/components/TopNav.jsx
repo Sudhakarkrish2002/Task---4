@@ -8,7 +8,7 @@ const tabTooltips = {
   Review: 'Learner highlights - See what students are saying',
 };
 
-const TopNav = ({ activeTab, onSelect, onMenuToggle }) => (
+const TopNav = ({ activeTab, onSelect, onMenuToggle, currentView, onNavigatePrevious, onNavigateNext, canNavigatePrevious, canNavigateNext }) => (
   <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 bg-slate-900/70 px-4 py-4 backdrop-blur sm:px-6 md:px-8">
     <div className="flex items-center gap-3">
       {onMenuToggle ? (
@@ -25,6 +25,36 @@ const TopNav = ({ activeTab, onSelect, onMenuToggle }) => (
           </button>
         </Tooltip>
       ) : null}
+      <div className="flex items-center gap-2">
+        {canNavigatePrevious && onNavigatePrevious && (
+          <Tooltip content="Go to previous page">
+            <button
+              type="button"
+              onClick={onNavigatePrevious}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/60 bg-slate-800/80 text-slate-300 transition hover:border-emerald-500/60 hover:bg-slate-700/80 hover:text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+              aria-label="Previous page"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </Tooltip>
+        )}
+        {canNavigateNext && onNavigateNext && (
+          <Tooltip content="Go to next page">
+            <button
+              type="button"
+              onClick={onNavigateNext}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/60 bg-slate-800/80 text-slate-300 transition hover:border-emerald-500/60 hover:bg-slate-700/80 hover:text-emerald-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"
+              aria-label="Next page"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </Tooltip>
+        )}
+      </div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300/70">Robot Studio</p>
         <h2 className="mt-1 text-xl font-semibold text-white">Navigation Hub</h2>
