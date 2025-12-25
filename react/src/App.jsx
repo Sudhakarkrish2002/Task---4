@@ -306,8 +306,13 @@ function App() {
     setToast({ message: `New file ${newFileName} created`, type: 'success' });
   };
 
-  const handleCodeLabRun = () => {
+  const handleCodeLabRun = async () => {
     if (codeLabStatus === 'Running') {
+      return;
+    }
+
+    if (!window.electronAPI) {
+      setToast({ message: 'Electron API not available. Please run in Electron environment.', type: 'error' });
       return;
     }
 
@@ -315,17 +320,30 @@ function App() {
     const timestamp = new Date().toLocaleTimeString();
     setCodeLabConsole((prev) => [`[${timestamp}] ▶️ Executing code...`, ...prev].slice(0, 50));
 
-    // Simulate code execution
-    setTimeout(() => {
-      const completedAt = new Date().toLocaleTimeString();
+    try {
+      const result = await window.electronAPI.executePython(codeLabCode);
+      
+      if (!result.success) {
+        setCodeLabStatus('Idle');
+        const errorTime = new Date().toLocaleTimeString();
+        setCodeLabConsole((prev) => [
+          `[${errorTime}] ❌ Error: ${result.error || 'Failed to execute code'}`,
+          ...prev,
+        ].slice(0, 50));
+        setToast({ message: result.error || 'Code execution failed', type: 'error' });
+        return;
+      }
+
+      // Real-time output will be handled by event listeners
+    } catch (error) {
       setCodeLabStatus('Idle');
+      const errorTime = new Date().toLocaleTimeString();
       setCodeLabConsole((prev) => [
-        `[${completedAt}] ✅ Code executed successfully.`,
-        `[${completedAt}] Output: Rover "Explorer" initialized with sensors.`,
+        `[${errorTime}] ❌ Error: ${error.message}`,
         ...prev,
       ].slice(0, 50));
-      setToast({ message: 'Code executed successfully!', type: 'success' });
-    }, 1500);
+      setToast({ message: 'Code execution failed', type: 'error' });
+    }
   };
 
   const handleCodeLabClearConsole = () => {
@@ -680,7 +698,7 @@ function App() {
     }
   };
 
-  const handleInstallLibrary = (library) => {
+  const handleInstallLibrary = async (library) => {
     const { name } = library;
     const status = libraryStatus[name];
 
@@ -698,10 +716,8 @@ function App() {
       return;
     }
 
-    if (internetStatus.connection === 'Disconnected') {
-      setInstallMessage({ type: 'error', text: '🔴 Installation failed!' });
-      setToast({ message: 'Installation failed! Check your internet connection.', type: 'error' });
-      appendLog(`Failed to install ${name}: No internet connection.`);
+    if (!window.electronAPI) {
+      setToast({ message: 'Electron API not available. Please run in Electron environment.', type: 'error' });
       return;
     }
 
@@ -714,20 +730,10 @@ function App() {
       [name]: 'installing',
     }));
 
-    setTimeout(() => {
-      const shouldFail = Math.random() < 0.1;
+    try {
+      const result = await window.electronAPI.installPackage(name);
       
-      if (shouldFail) {
-        setLibraryStatus((prev) => ({
-          ...prev,
-          [name]: 'pending',
-        }));
-        setIsInstalling(false);
-        setCurrentInstall(null);
-        setInstallMessage({ type: 'error', text: '🔴 Installation failed!' });
-        setToast({ message: `Failed to install ${name}`, type: 'error' });
-        appendLog(`Failed to install ${name}. Please try again.`);
-      } else {
+      if (result.success) {
         setLibraryStatus((prev) => ({
           ...prev,
           [name]: 'installed',
@@ -737,8 +743,28 @@ function App() {
         setInstallMessage({ type: 'success', text: `🟢 ${name} installed successfully!` });
         setToast({ message: `${name} installed successfully!`, type: 'success' });
         appendLog(`${name} installed successfully!`);
+      } else {
+        setLibraryStatus((prev) => ({
+          ...prev,
+          [name]: 'pending',
+        }));
+        setIsInstalling(false);
+        setCurrentInstall(null);
+        setInstallMessage({ type: 'error', text: '🔴 Installation failed!' });
+        setToast({ message: result.error || `Failed to install ${name}`, type: 'error' });
+        appendLog(`Failed to install ${name}: ${result.error || 'Unknown error'}`);
       }
-    }, 1600);
+    } catch (error) {
+      setLibraryStatus((prev) => ({
+        ...prev,
+        [name]: 'pending',
+      }));
+      setIsInstalling(false);
+      setCurrentInstall(null);
+      setInstallMessage({ type: 'error', text: '🔴 Installation failed!' });
+      setToast({ message: `Failed to install ${name}`, type: 'error' });
+      appendLog(`Failed to install ${name}: ${error.message}`);
+    }
   };
 
   const handleInstallCustomLibrary = () => {
@@ -816,6 +842,75 @@ function App() {
     };
   }, []);
 
+  // Set up Python execution event listeners
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    const handlePythonOutput = (data) => {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = data.type === 'stderr' ? '⚠️' : '';
+      setCodeLabConsole((prev) => [
+        `[${timestamp}] ${prefix}${data.data.trim()}`,
+        ...prev,
+      ].slice(0, 50));
+    };
+
+    const handlePythonComplete = (data) => {
+      const timestamp = new Date().toLocaleTimeString();
+      setCodeLabStatus('Idle');
+      
+      if (data.exitCode === 0) {
+        setCodeLabConsole((prev) => [
+          `[${timestamp}] ✅ Code executed successfully.`,
+          ...prev,
+        ].slice(0, 50));
+        setToast({ message: 'Code executed successfully!', type: 'success' });
+      } else {
+        setCodeLabConsole((prev) => [
+          `[${timestamp}] ❌ Code execution failed with exit code ${data.exitCode}.`,
+          ...prev,
+        ].slice(0, 50));
+        setToast({ message: 'Code execution failed', type: 'error' });
+      }
+    };
+
+    const handlePythonError = (data) => {
+      const timestamp = new Date().toLocaleTimeString();
+      setCodeLabStatus('Idle');
+      setCodeLabConsole((prev) => [
+        `[${timestamp}] ❌ Error: ${data.error}`,
+        ...prev,
+      ].slice(0, 50));
+      setToast({ message: 'Code execution error', type: 'error' });
+    };
+
+    window.electronAPI.onPythonOutput(handlePythonOutput);
+    window.electronAPI.onPythonComplete(handlePythonComplete);
+    window.electronAPI.onPythonError(handlePythonError);
+
+    return () => {
+      window.electronAPI.removePythonOutputListener();
+      window.electronAPI.removePythonCompleteListener();
+      window.electronAPI.removePythonErrorListener();
+    };
+  }, []);
+
+  // Set up pip installation event listeners
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    const handlePipOutput = (data) => {
+      const timestamp = new Date().toLocaleTimeString();
+      appendLog(data.data.trim());
+    };
+
+    window.electronAPI.onPipOutput(handlePipOutput);
+
+    return () => {
+      window.electronAPI.removePipOutputListener();
+    };
+  }, []);
+
   useEffect(() => {
     if (view !== ROUTES.CODE_LAB) {
       setIsInstallLibraryModalOpen(false);
@@ -837,6 +932,29 @@ function App() {
 
       return changed ? next : prev;
     });
+  }, [libraryList]);
+
+  // Check package installation status on mount
+  useEffect(() => {
+    if (!window.electronAPI) return;
+
+    const checkPackages = async () => {
+      for (const library of libraryList) {
+        try {
+          const result = await window.electronAPI.checkPackage(library.name);
+          if (result.success && result.installed) {
+            setLibraryStatus((prev) => ({
+              ...prev,
+              [library.name]: 'installed',
+            }));
+          }
+        } catch (error) {
+          // Ignore errors during status check
+        }
+      }
+    };
+
+    checkPackages();
   }, [libraryList]);
 
   if (view === ROUTES.WELCOME) {

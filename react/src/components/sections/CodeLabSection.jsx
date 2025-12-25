@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SectionHeader from '../ui/SectionHeader';
 import { BODY_TEXT, PANEL_PADDED, SECTION_STACK } from '../ui/layoutTokens';
 import Tooltip from '../ui/Tooltip';
@@ -68,6 +68,30 @@ function CodeLabSection({
   const isRunning = status === 'Running';
   const [renamingFile, setRenamingFile] = useState(null);
   const [renameValue, setRenameValue] = useState('');
+  const [pythonVersion, setPythonVersion] = useState({ version: '3.11+', status: 'checking' });
+
+  // Check Python version on mount
+  useEffect(() => {
+    const checkPythonVersion = async () => {
+      if (!window.electronAPI) {
+        setPythonVersion({ version: 'Not available', status: 'error', error: 'Electron API not available' });
+        return;
+      }
+
+      try {
+        const result = await window.electronAPI.checkPythonVersion();
+        if (result.success) {
+          setPythonVersion({ version: result.version, status: 'success', command: result.command });
+        } else {
+          setPythonVersion({ version: 'Not found', status: 'error', error: result.error });
+        }
+      } catch (error) {
+        setPythonVersion({ version: 'Error', status: 'error', error: error.message });
+      }
+    };
+
+    checkPythonVersion();
+  }, []);
 
   const handleToolbarClick = (item) => {
     switch (item) {
@@ -121,8 +145,22 @@ function CodeLabSection({
                     </div>
                     <h5 className="text-sm font-semibold text-white">Python Version</h5>
                   </div>
-                  <p className="text-sm text-emerald-300 font-medium">3.11+</p>
-                  <p className="text-xs text-slate-400 mt-2">Note: Python 3.11+ is NOT currently installed or integrated in the backend runtime. This is a design specification for future implementation.</p>
+                  {pythonVersion.status === 'checking' ? (
+                    <>
+                      <p className="text-sm text-emerald-300 font-medium">Checking...</p>
+                      <p className="text-xs text-slate-400 mt-2">Detecting Python installation...</p>
+                    </>
+                  ) : pythonVersion.status === 'error' ? (
+                    <>
+                      <p className="text-sm text-rose-400 font-medium">{pythonVersion.version}</p>
+                      <p className="text-xs text-slate-400 mt-2">{pythonVersion.error || 'Python not found. Please install Python 3.11+ from python.org'}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-emerald-300 font-medium">{pythonVersion.version}</p>
+                      <p className="text-xs text-slate-400 mt-2">Using system Python interpreter ({pythonVersion.command || 'python3'})</p>
+                    </>
+                  )}
                 </div>
 
                 <div className="rounded-xl border border-slate-800/80 bg-slate-950/60 p-5">
