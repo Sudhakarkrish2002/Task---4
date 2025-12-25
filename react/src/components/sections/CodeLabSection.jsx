@@ -73,8 +73,14 @@ function CodeLabSection({
   // Check Python version on mount
   useEffect(() => {
     const checkPythonVersion = async () => {
+      // Check if running in Electron desktop app
       if (!window.electronAPI) {
-        setPythonVersion({ version: 'Not available', status: 'error', error: 'Electron API not available' });
+        // Web environment - show informational message instead of error
+        setPythonVersion({ 
+          version: 'Web Version', 
+          status: 'info', 
+          error: 'Python execution requires the desktop app. Download the Electron version for full functionality.' 
+        });
         return;
       }
 
@@ -149,6 +155,11 @@ function CodeLabSection({
                     <>
                       <p className="text-sm text-emerald-300 font-medium">Checking...</p>
                       <p className="text-xs text-slate-400 mt-2">Detecting Python installation...</p>
+                    </>
+                  ) : pythonVersion.status === 'info' ? (
+                    <>
+                      <p className="text-sm text-amber-300 font-medium">{pythonVersion.version}</p>
+                      <p className="text-xs text-slate-400 mt-2">{pythonVersion.error || 'This is a web preview. Python features require the desktop app.'}</p>
                     </>
                   ) : pythonVersion.status === 'error' ? (
                     <>
